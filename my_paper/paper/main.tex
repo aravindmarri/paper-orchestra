@@ -1,0 +1,261 @@
+% IEEE conference paper. Compile in Overleaf or TeX Live (IEEEtran ships with both).
+% Build: pdflatex main -> bibtex main -> pdflatex main -> pdflatex main
+\documentclass[conference]{IEEEtran}
+
+\input{preamble}
+
+\usepackage[colorlinks,allcolors=blue]{hyperref}
+\usepackage[capitalize]{cleveref}
+
+\title{Generalizable Wearable Stress Detection from\\ Heart-Rate Variability: A Subject-Independent Study}
+
+\author{\IEEEauthorblockN{Aravind Marri}
+\IEEEauthorblockA{\textit{[Your Department]} \\
+\textit{[Your Institution]}\\
+[City, Country] \\
+[email]}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Wearable devices increasingly promise to detect psychological stress from
+physiological signals, yet reported accuracies are often inflated by
+subject-dependent evaluation that lets the same person appear in both training
+and test sets. We study how well a stress detector built on heart-rate
+variability (HRV) alone---a signal available on consumer wrist wearables---
+generalizes to \emph{unseen} people. Using the public WESAD dataset, we extract
+seven standard time- and frequency-domain HRV features from 60-second windows of
+wrist photoplethysmography (PPG) and evaluate four classifiers under strict
+Leave-One-Subject-Out (LOSO) cross-validation on a binary baseline-versus-stress
+task. HRV features achieve a macro-F1 of 0.87 and AUROC of 0.95 (logistic
+regression), far above a heart-rate-only baseline (macro-F1 0.54), and the best
+model is also the most stable across subjects. Ablations show that time-domain
+HRV features alone nearly match the full feature set and clearly outperform
+frequency-domain features at this window length, and that longer windows improve
+detection monotonically. We release a fully reproducible pipeline and outline a
+protocol for validating such models on a consumer smartwatch. Our results give a
+realistic, subject-independent reference point for HRV-based stress sensing on
+wearables.
+\end{abstract}
+
+\begin{IEEEkeywords}
+heart-rate variability, stress detection, wearable sensing, photoplethysmography,
+affective computing, subject-independent evaluation
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:intro}
+Chronic and acute psychological stress are strongly linked to cardiovascular,
+metabolic, and mental-health outcomes, and continuous, unobtrusive stress
+monitoring is one of the most requested features of consumer wearables. Among the
+signals these devices can capture, heart-rate variability (HRV)---the variation in
+time between consecutive heartbeats---has a well-established physiological link to
+autonomic nervous system activity and stress~\cite{taskforce1996hrv,shaffer2017hrv,kim2018hrv}.
+Crucially, HRV can be derived from the photoplethysmography (PPG) sensor already
+present in virtually every wrist wearable, making it an attractive, low-cost basis
+for on-device stress detection.
+
+A large body of work reports high accuracy for wearable stress detection. However,
+many studies evaluate with record- or window-level cross-validation that places
+windows from the \emph{same} subject in both training and test folds. Because
+physiology is highly person-specific, such protocols measure how well a model
+memorizes an individual rather than how well it generalizes to a new user---the
+setting that actually matters when a model ships to millions of devices. The gap
+between subject-dependent and subject-independent performance is frequently large,
+yet the former is still widely reported.
+
+In this paper we ask a deliberately conservative question: \emph{using only HRV,
+how well can a stress detector trained on a labeled population generalize to an
+unseen person?} We study this on the public WESAD dataset~\cite{schmidt2018wesad}
+using strict Leave-One-Subject-Out (LOSO) cross-validation. Our contributions are:
+\begin{itemize}
+  \item A subject-independent benchmark of HRV-only stress detection on wrist PPG,
+        comparing four classifiers against an explicit heart-rate-only baseline,
+        reported with per-subject variability (\cref{sec:main}).
+  \item Ablations isolating the contribution of time- versus frequency-domain HRV
+        features and the effect of analysis-window length (\cref{sec:ablations}).
+  \item A fully reproducible, open pipeline (public data, standard tooling) and a
+        protocol for validating the resulting model on a consumer smartwatch
+        (\cref{sec:conclusion}).
+\end{itemize}
+
+\section{Related Work}
+\label{sec:related_work}
+\textbf{HRV and stress.} The autonomic correlates of HRV are well documented: the
+measurement standards of~\cite{taskforce1996hrv} and the metric overview
+of~\cite{shaffer2017hrv} define the time- and frequency-domain indices used
+throughout this work, and a meta-analysis~\cite{kim2018hrv} confirms that acute
+stress systematically reduces several HRV indices. These findings motivate HRV as
+a physiologically grounded feature set rather than an opaque signal.
+
+\textbf{Wearable stress detection.} WESAD~\cite{schmidt2018wesad} introduced a
+multimodal benchmark combining chest and wrist sensors and has become a standard
+testbed. Wrist-only approaches such as~\cite{gjoreski2017stress} and the broad
+survey of~\cite{can2019stress} report strong results across devices and signals.
+Our work is complementary and deliberately narrow: we isolate the HRV channel
+available on commodity wrist devices and measure it under a strict
+subject-independent protocol, providing a realistic reference point rather than a
+best-case multimodal number.
+
+\section{Methodology}
+\label{sec:method}
+\subsection{Dataset}
+We use WESAD~\cite{schmidt2018wesad}, which contains synchronized physiological
+recordings from 15 subjects (identifiers S2--S11 and S13--S17). We use the wrist
+device's PPG/blood-volume-pulse (BVP) channel, sampled at 64~Hz, together with the
+protocol labels. We frame the task as binary classification of \emph{baseline}
+versus \emph{stress} conditions, excluding transient and other states.
+
+\subsection{Feature Extraction}
+Each recording is divided into 60-second windows with a 30-second stride. A window
+is retained only if at least 90\% of its samples share a single label, which is
+then used as the window label. For each window, the PPG signal is cleaned and
+systolic peaks are detected with NeuroKit2~\cite{makowski2021neurokit}; inter-beat
+intervals (IBIs) outside the physiologically plausible range of 300--2000~ms are
+discarded, and windows with fewer than twelve beats are dropped. From the IBI
+series we compute seven standard HRV features: four time-domain
+(mean heart rate, SDNN, RMSSD, pNN50) and three frequency-domain (LF and HF band
+power and the LF/HF ratio). Frequency-domain features are obtained by cubic
+interpolation of the tachogram to 4~Hz followed by a Welch power spectral density
+estimate, integrated over the LF (0.04--0.15~Hz) and HF (0.15--0.40~Hz) bands.
+This procedure yields 869 labeled windows (562 non-stress, 307 stress), 55--61 per
+subject.
+
+\subsection{Models and Evaluation}
+We compare four classifiers: a mean-heart-rate-only baseline (logistic regression
+on a single feature), logistic regression, a random forest (300 trees), and a
+small multilayer perceptron (hidden layers 32--16), all on standardized features.
+Standardization statistics are fit on the training split only.
+
+We evaluate with Leave-One-Subject-Out (LOSO) cross-validation: in each of the 15
+folds, one subject is held out for testing and the remaining fourteen are used for
+training, so no window from the test subject is ever seen during training. We
+report mean accuracy, macro-F1, and AUROC across folds, as well as the standard
+deviation of per-subject macro-F1 as a measure of how consistently a model
+generalizes across individuals.
+
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Main Results}
+\label{sec:main}
+\cref{tab:main} reports LOSO performance. The heart-rate-only baseline performs
+poorly (macro-F1 0.54, AUROC 0.67), confirming that mean heart rate alone is a
+weak stress indicator across subjects. Adding the full HRV feature set yields a
+large improvement: logistic regression reaches macro-F1 0.87 and AUROC 0.95, with
+the small MLP essentially tied. Beyond mean performance, logistic regression also
+has the lowest per-subject F1 standard deviation (0.094), indicating that it
+generalizes most consistently to unseen individuals---a desirable property for a
+model intended to ship to a diverse user base. \cref{fig:models} summarizes the
+comparison.
+
+\begin{table}[t]
+  \centering
+  \caption{LOSO results on WESAD (baseline vs.\ stress). Best per column in bold.}
+  \label{tab:main}
+  \begin{tabular}{@{}lcccc@{}}
+    \toprule
+    Model & Acc. & Macro-F1 & AUROC & F1 std.\ \\
+    \midrule
+    mean-HR only (baseline) & 0.689 & 0.541 & 0.668 & 0.191 \\
+    Logistic Regression     & \textbf{0.885} & \textbf{0.873} & \textbf{0.952} & \textbf{0.094} \\
+    Random Forest           & 0.838 & 0.823 & 0.905 & 0.159 \\
+    Small MLP               & 0.882 & 0.870 & 0.948 & 0.116 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \IfFileExists{figures/fig_models.png}
+    {\includegraphics[width=\linewidth]{figures/fig_models.png}}
+    {\fbox{\parbox{0.9\linewidth}{\centering\vspace{1.5em} Place \texttt{figures/fig\_models.png} here\\ (downloaded from the Colab run).\vspace{1.5em}}}}
+  \caption{Macro-F1 by model under LOSO cross-validation. The dashed line marks
+  chance-level macro-F1.}
+  \label{fig:models}
+\end{figure}
+
+\subsection{Ablations}
+\label{sec:ablations}
+\textbf{Feature groups.} \cref{tab:ablfeat} compares HRV feature subsets using the
+random forest. Time-domain features alone (macro-F1 0.83) nearly match the full
+set and clearly outperform frequency-domain features alone (macro-F1 0.66). At a
+60-second window, the LF band in particular is poorly resolved, which likely
+explains the weak frequency-domain performance; practically, this means a robust
+on-device detector can rely on inexpensive time-domain statistics.
+
+\begin{table}[t]
+  \centering
+  \caption{Feature-group ablation (Random Forest, LOSO).}
+  \label{tab:ablfeat}
+  \begin{tabular}{@{}lccc@{}}
+    \toprule
+    Feature set & Acc. & Macro-F1 & AUROC \\
+    \midrule
+    Time-domain only & 0.848 & 0.834 & 0.922 \\
+    Frequency-domain only & 0.696 & 0.657 & 0.720 \\
+    All features & 0.838 & 0.823 & 0.905 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textbf{Window length.} \cref{tab:ablwin} varies the analysis window. Performance
+improves monotonically from 30~s (macro-F1 0.79) to 120~s (macro-F1 0.86), as
+longer windows contain more beats and yield more stable HRV estimates. This
+exposes a latency--accuracy trade-off for real-time use: shorter windows respond
+faster but are noisier.
+
+\begin{table}[t]
+  \centering
+  \caption{Window-length ablation (Random Forest, LOSO).}
+  \label{tab:ablwin}
+  \begin{tabular}{@{}cccc@{}}
+    \toprule
+    Window (s) & Acc. & Macro-F1 & AUROC \\
+    \midrule
+    30  & 0.808 & 0.787 & 0.883 \\
+    60  & 0.838 & 0.823 & 0.905 \\
+    120 & 0.869 & 0.855 & 0.918 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Discussion}
+Three findings stand out. First, the gap between the HRV models and the
+heart-rate-only baseline shows that the discriminative information is in the
+\emph{variability} of the heartbeat, not its rate---consistent with the autonomic
+literature~\cite{taskforce1996hrv,kim2018hrv}. Second, a simple linear model is
+both the most accurate and the most consistent across subjects, suggesting the
+subject-independent decision boundary is largely linear in standardized HRV space
+and cautioning against over-parameterized models on datasets of this size. Third,
+the low per-subject variance of the best model is encouraging for deployment, but
+the remaining spread indicates that some individuals are still harder than others,
+motivating lightweight personalization.
+
+\section{Conclusion}
+\label{sec:conclusion}
+We presented a subject-independent evaluation of HRV-only stress detection on wrist
+PPG. Under strict LOSO cross-validation on WESAD, HRV features reached macro-F1
+0.87 and AUROC 0.95, far exceeding a heart-rate-only baseline, with time-domain
+features carrying most of the signal and longer windows helping. These numbers
+offer a realistic reference point for what commodity wrist sensing can achieve
+without per-user calibration.
+
+\textbf{Limitations.} We study a binary, laboratory-induced stress task on a
+single public dataset; wrist PPG is also susceptible to motion artifacts that are
+more severe in daily life. \textbf{Future work.} We plan (i) a consumer-device
+validation in which HRV exported from a commercial smartwatch, together with
+self-reported stress labels, is windowed identically and classified by the
+public-data-trained model; (ii) extension to multi-class affect; and (iii)
+lightweight per-user personalization to reduce the residual per-subject spread.
+
+% \section*{Reproducibility}
+% Code and configuration to reproduce all results are available in the project repository.
+
+{\small
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+}
+
+\end{document}
