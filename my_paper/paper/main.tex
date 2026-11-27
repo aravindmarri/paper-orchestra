@@ -21,7 +21,7 @@ Wearable devices increasingly promise to detect psychological stress from
 physiological signals, yet reported accuracies are often inflated by
 subject-dependent evaluation that lets the same person appear in both training
 and test sets. We study how well a stress detector built on heart-rate
-variability (HRV) alone---a signal available on consumer wrist wearables---
+variability (HRV) alone, a signal available on consumer wrist wearables,
 generalizes to \emph{unseen} people. Using the public WESAD dataset, we extract
 seven standard time- and frequency-domain HRV features from 60-second windows of
 wrist photoplethysmography (PPG) and evaluate four classifiers under strict
@@ -47,8 +47,8 @@ affective computing, subject-independent evaluation
 Chronic and acute psychological stress are strongly linked to cardiovascular,
 metabolic, and mental-health outcomes, and continuous, unobtrusive stress
 monitoring is one of the most requested features of consumer wearables. Among the
-signals these devices can capture, heart-rate variability (HRV)---the variation in
-time between consecutive heartbeats---has a well-established physiological link to
+signals these devices can capture, heart-rate variability (HRV), the variation in
+time between consecutive heartbeats, has a well-established physiological link to
 autonomic nervous system activity and stress~\cite{taskforce1996hrv,shaffer2017hrv,kim2018hrv}.
 Crucially, HRV can be derived from the photoplethysmography (PPG) sensor already
 present in virtually every wrist wearable, making it an attractive, low-cost basis
@@ -58,7 +58,7 @@ A large body of work reports high accuracy for wearable stress detection. Howeve
 many studies evaluate with record- or window-level cross-validation that places
 windows from the \emph{same} subject in both training and test folds. Because
 physiology is highly person-specific, such protocols measure how well a model
-memorizes an individual rather than how well it generalizes to a new user---the
+memorizes an individual rather than how well it generalizes to a new user, the
 setting that actually matters when a model ships to millions of devices. The gap
 between subject-dependent and subject-independent performance is frequently large,
 yet the former is still widely reported.
@@ -144,7 +144,7 @@ weak stress indicator across subjects. Adding the full HRV feature set yields a
 large improvement: logistic regression reaches macro-F1 0.87 and AUROC 0.95, with
 the small MLP essentially tied. Beyond mean performance, logistic regression also
 has the lowest per-subject F1 standard deviation (0.094), indicating that it
-generalizes most consistently to unseen individuals---a desirable property for a
+generalizes most consistently to unseen individuals, a desirable property for a
 model intended to ship to a diverse user base. \cref{fig:models} summarizes the
 comparison.
 
@@ -244,7 +244,7 @@ faster but are noisier.
 \subsection{Discussion}
 Three findings stand out. First, the gap between the HRV models and the
 heart-rate-only baseline shows that the discriminative information is in the
-\emph{variability} of the heartbeat, not its rate---consistent with the autonomic
+\emph{variability} of the heartbeat, not its rate, consistent with the autonomic
 literature~\cite{taskforce1996hrv,kim2018hrv}. Second, a simple linear model is
 both the most accurate and the most consistent across subjects, suggesting the
 subject-independent decision boundary is largely linear in standardized HRV space
