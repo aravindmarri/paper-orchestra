@@ -176,6 +176,16 @@ comparison.
   \label{fig:models}
 \end{figure}
 
+\begin{figure}[t]
+  \centering
+  \IfFileExists{figures/fig_per_subject.png}
+    {\includegraphics[width=0.85\linewidth]{figures/fig_per_subject.png}}
+    {\fbox{\parbox{0.9\linewidth}{\centering\vspace{1.5em} Place \texttt{figures/fig\_per\_subject.png} here.\vspace{1.5em}}}}
+  \caption{Per-subject macro-F1 for the random forest under LOSO, showing the spread
+  across the 15 held-out subjects.}
+  \label{fig:per_subject}
+\end{figure}
+
 \subsection{Ablations}
 \label{sec:ablations}
 \textbf{Feature groups.} \cref{tab:ablfeat} compares HRV feature subsets using the
@@ -183,7 +193,9 @@ random forest. Time-domain features alone (macro-F1 0.83) nearly match the full
 set and clearly outperform frequency-domain features alone (macro-F1 0.66). At a
 60-second window, the LF band in particular is poorly resolved, which likely
 explains the weak frequency-domain performance; practically, this means a robust
-on-device detector can rely on inexpensive time-domain statistics.
+on-device detector can rely on inexpensive time-domain statistics. \cref{fig:importance}
+shows that mean heart rate and the time-domain indices dominate the model's feature
+importances.
 
 \begin{table}[t]
   \centering
@@ -199,6 +211,16 @@ on-device detector can rely on inexpensive time-domain statistics.
     \bottomrule
   \end{tabular}
 \end{table}
+
+\begin{figure}[t]
+  \centering
+  \IfFileExists{figures/fig_importance.png}
+    {\includegraphics[width=0.85\linewidth]{figures/fig_importance.png}}
+    {\fbox{\parbox{0.9\linewidth}{\centering\vspace{1.5em} Place \texttt{figures/fig\_importance.png} here.\vspace{1.5em}}}}
+  \caption{Random forest feature importances. Mean heart rate and the time-domain HRV
+  indices dominate.}
+  \label{fig:importance}
+\end{figure}
 
 \textbf{Window length.} \cref{tab:ablwin} varies the analysis window. Performance
 improves monotonically from 30~s (macro-F1 0.79) to 120~s (macro-F1 0.86), as
@@ -229,7 +251,7 @@ literature~\cite{taskforce1996hrv,kim2018hrv}. Second, a simple linear model is
 both the most accurate and the most consistent across subjects, suggesting the
 subject-independent decision boundary is largely linear in standardized HRV space
 and cautioning against over-parameterized models on datasets of this size. Third,
-the low per-subject variance of the best model is encouraging for deployment, but
+the low per-subject variance of the best model is encouraging for deployment (\cref{fig:per_subject}), but
 the remaining spread indicates that some individuals are still harder than others,
 motivating lightweight personalization.
 
