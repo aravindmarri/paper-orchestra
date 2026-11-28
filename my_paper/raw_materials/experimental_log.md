@@ -53,3 +53,33 @@ Finding: longer windows improve detection monotonically (more beats -> more stab
 ## 5. Consumer-device validation — Apple Watch Ultra case study (PENDING)
 Export Apple Health HRV (SDNN) + self-reported stress labels, window identically, apply the
 public-data-trained model, and report agreement. Personal data kept local.
+
+
+## 6. Specificity & uncertainty (v3, run in Colab 2026-11-27)
+# Produced by my_paper/experiments/wesad_hrv_stress_v3.ipynb. Windows kept: 1030 total
+# (baseline 562, stress 307, amusement 161). Same PPG/HRV pipeline as section 1.
+
+### 6a. Three-class LOSO (baseline/stress/amusement), Random Forest
+- macro-F1 = 0.520, accuracy = 0.687; per-subject mean macro-F1 = 0.520 +/- 0.082.
+- Majority-class baseline macro-F1 = 0.235.
+- Row-normalised confusion (recall on diagonal):
+    baseline : baseline 0.797, stress 0.155, amusement 0.048
+    stress   : baseline 0.153, stress 0.834, amusement 0.013
+    amusement: baseline 0.894, stress 0.081, amusement 0.025
+- Reading: stress recovered well (0.83) and almost never called amusement (0.013);
+  amusement collapses into baseline (recall 0.025) -> amusement is the hard class,
+  NOT stress-vs-amusement confusion. Model is not a generic arousal detector.
+
+### 6b. Stress vs amusement (both high-arousal), LOSO
+- Logistic Regression: macro-F1 = 0.842 +/- 0.162, acc = 0.878, stress-recall = 0.941.
+- Random Forest:       macro-F1 = 0.818 +/- 0.172, acc = 0.854, stress-recall = 0.915.
+- Majority baseline macro-F1 = 0.396 (windows: stress 307, amusement 161).
+- Reading: features separate stress from a different affective state, not just arousal.
+
+### 6c. Baseline vs stress (headline), per-subject bootstrap (Random Forest)
+- Mean per-subject macro-F1 = 0.823; bootstrap 95% CI [0.736, 0.895] (B=5000 over 15 subjects).
+- Per-subject range: min 0.413 (S10), median 0.856, max 0.980 (S7). Hard subjects: S10, S15 (0.499).
+
+### 6d. Saved artifacts (outputs_v3/)
+- features_v3.csv, confusion_3class.csv, per_subject_f1.csv, fig_confusion3.png, summary_v3.md
+- Tool versions: python 3.13, numpy 2.4.6, sklearn 1.6.1, scipy 1.16.3, neurokit2 0.2.10.

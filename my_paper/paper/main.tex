@@ -30,7 +30,10 @@ task. HRV features achieve a macro-F1 of 0.87 and AUROC of 0.95 (logistic
 regression), far above a heart-rate-only baseline (macro-F1 0.54), and the best
 model is also the most stable across subjects. Ablations show that variability
 features carry stress information beyond heart rate alone, that rate and time-domain
-variability together are strongest, and that longer windows help. Critically, a
+variability together are strongest, and that longer windows help. A specificity check
+shows the detector separates stress from amusement, a different high-arousal state
+(macro-F1 0.84), rather than tracking arousal alone, and we report per-subject bootstrap
+confidence intervals. Critically, a
 validity check against WESAD's synchronized ECG shows the wrist sensor recovers heart
 rate but \emph{not} beat-to-beat HRV (near-zero RMSSD/SDNN agreement), so these
 features are better described as pulse-rate variability than as validated HRV. We
@@ -76,6 +79,10 @@ using strict Leave-One-Subject-Out (LOSO) cross-validation. Our contributions ar
   \item A feature ablation isolating mean heart rate, time-, and frequency-domain
         variability (including a variability-only model), reported with stress recall
         and specificity, plus an analysis-window sweep (\cref{sec:ablations}).
+  \item A stress-specificity analysis (a three-class baseline/stress/amusement task and a
+        direct stress-versus-amusement task) showing the detector captures stress rather
+        than generic arousal, reported with per-subject bootstrap confidence intervals
+        (\cref{sec:specificity}).
   \item A signal-validity analysis comparing PPG-derived HRV against WESAD's
         synchronized ECG, with a motion split, showing the wrist sensor captures rate
         but not beat-to-beat HRV (\cref{sec:validity}).
@@ -101,6 +108,33 @@ Our work is complementary and deliberately narrow: we isolate the HRV channel
 available on commodity wrist devices and measure it under a strict
 subject-independent protocol, providing a realistic reference point rather than a
 best-case multimodal number.
+
+\cref{tab:related} situates our setup against representative WESAD-based results.
+Reported accuracies approaching $0.9$ typically rely on multimodal fusion (notably
+electrodermal activity) and often on the chest device; by isolating the wrist HRV
+channel under strict LOSO we obtain a comparable binary accuracy from a single,
+commodity-available signal, forgoing the headroom that richer modalities provide.
+The figures are not directly comparable, as the studies differ in sensors, class
+definitions, and reported metric; the table is included only to locate our operating
+point within the literature.
+
+\begin{table}[t]
+  \centering
+  \caption{Representative WESAD-based stress detection under subject-independent
+  (LOSO) evaluation. Accuracies are as reported by each source and are \emph{not}
+  directly comparable (differing sensors, classes, and metrics). EDA: electrodermal
+  activity; ACC: accelerometer.}
+  \label{tab:related}
+  \begin{tabular}{@{}p{2.3cm}p{2.2cm}p{1.4cm}c@{}}
+    \toprule
+    Study & Device / signals & Features & Bin.\ acc. \\
+    \midrule
+    Schmidt et al.~\cite{schmidt2018wesad} & chest+wrist, multimodal (ECG, EDA, EMG, resp., temp., ACC, BVP) & many & up to 0.93 \\
+    Gjoreski et al.~\cite{gjoreski2017stress} & wrist, multimodal (BVP, EDA, temp., ACC) & many & $\approx$0.85 \\
+    \textbf{This work} & wrist PPG only & 7 HRV & 0.885 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \section{Methodology}
 \label{sec:method}
@@ -153,6 +187,13 @@ has the lowest per-subject F1 standard deviation (0.094), indicating that it
 generalizes most consistently to unseen individuals, a desirable property for a
 model intended to ship to a diverse user base. \cref{fig:models} summarizes the
 comparison.
+
+To quantify uncertainty across individuals, we bootstrap the per-subject macro-F1
+(random forest, 5000 resamples over the 15 subjects): the mean is 0.82 with a 95\%
+confidence interval of $[0.74, 0.90]$, and per-subject values range from 0.41 for the
+hardest subject to 0.98 for the easiest (median 0.86). The interval sits well above
+chance, but the spread confirms that a few individuals remain substantially harder than
+the rest.
 
 \begin{table}[t]
   \centering
@@ -255,6 +296,43 @@ faster but are noisier.
   \end{tabular}
 \end{table}
 
+\subsection{Stress specificity: three classes and stress vs.\ amusement}
+\label{sec:specificity}
+A detector that merely responds to physiological \emph{arousal} would confuse stress
+with other high-arousal states. We probe specificity in two ways. First, we extend the
+task to three classes (baseline, stress, amusement) under LOSO with the random forest.
+Macro-F1 is 0.52 (accuracy 0.69), well above the 0.24 majority-class baseline.
+\cref{tab:conf3} shows \emph{where} errors fall. Stress is recovered well (recall 0.83)
+and is almost never mistaken for amusement (only 1.3\% of stress windows), while amusement
+is largely absorbed into baseline (recall 0.03). The model therefore does not treat stress
+as generic arousal; instead, amusement's wrist signature sits close to baseline and is the
+hard class, consistent with amusement being a milder affective manipulation than the
+stress protocol.
+
+\begin{table}[t]
+  \centering
+  \caption{Three-class LOSO confusion (random forest), row-normalised so the diagonal is
+  per-class recall. Stress is well separated and rarely confused with amusement; amusement
+  collapses into baseline.}
+  \label{tab:conf3}
+  \begin{tabular}{@{}lccc@{}}
+    \toprule
+    True $\downarrow$ / Pred.\ $\rightarrow$ & baseline & stress & amusement \\
+    \midrule
+    baseline  & \textbf{0.80} & 0.15 & 0.05 \\
+    stress    & 0.15 & \textbf{0.83} & 0.01 \\
+    amusement & 0.89 & 0.08 & \textbf{0.03} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Second, we train directly on the two high-arousal conditions, stress vs.\ amusement.
+Logistic regression reaches macro-F1 0.84 (accuracy 0.88, stress recall 0.94) against a
+0.40 majority baseline, with the random forest close behind (macro-F1 0.82). This confirms
+that the features separate stress from a \emph{different} affective state rather than
+detecting arousal alone. Amusement is the smaller class here (161 windows vs.\ 307 stress),
+so these figures should be read with that imbalance in mind.
+
 \subsection{Signal validity and motion}
 \label{sec:validity}
 A high classification score does not guarantee the model uses genuine HRV. Using
@@ -276,7 +354,7 @@ vs.\ $0.93$ stress). These checks temper the interpretation: the detector is use
 but its inputs are not equivalent to ECG HRV.
 
 \subsection{Discussion}
-Four findings stand out. First, variability features alone outperform a mean-HR-only
+Five findings stand out. First, variability features alone outperform a mean-HR-only
 model (macro-F1 0.71 vs.\ 0.54), so beat-to-beat variability carries stress
 information beyond rate; yet rate and variability \emph{together} are substantially
 stronger (0.87), so neither alone tells the whole story~\cite{taskforce1996hrv,kim2018hrv}.
@@ -285,7 +363,10 @@ evaluation, both accurate and the most consistent across subjects, which caution
 against over-parameterized models on datasets of this size. Third, the low per-subject
 variance of the best model is encouraging for deployment (\cref{fig:per_subject}), but
 the remaining spread indicates that some individuals are still harder than others,
-motivating lightweight personalization. Fourth, and most important for honest
+motivating lightweight personalization. Fourth, the detector is stress-\emph{specific}
+rather than an arousal detector: it separates stress from amusement (\cref{sec:specificity}),
+and in the three-class setting stress is rarely confused with amusement, whereas amusement
+itself resembles baseline. Fifth, and most important for honest
 interpretation, the wrist-derived variability does not match ECG HRV
 (\cref{sec:validity}): the classifier is effective, but it learns from pulse-rate and
 signal-quality patterns rather than from clean autonomic variability.
@@ -295,7 +376,9 @@ signal-quality patterns rather than from clean autonomic variability.
 We presented a subject-independent evaluation of HRV-based stress detection on wrist
 PPG. Under strict LOSO cross-validation on WESAD, the features reached macro-F1 0.87
 and AUROC 0.95, far exceeding majority-class and heart-rate-only baselines, with
-time-domain features carrying most of the signal. A validity check against
+time-domain features carrying most of the signal. A specificity analysis further shows
+the detector distinguishes stress from amusement, another high-arousal state, rather than
+tracking arousal alone. A validity check against
 synchronized ECG, however, shows the wrist sensor captures rate but not beat-to-beat
 HRV, so these results are best read as a realistic reference point for commodity wrist
 \emph{pulse-rate} sensing, not validated HRV, and as a caution against over-claiming
@@ -307,14 +390,16 @@ daily life, and (as shown here) its beat-to-beat variability does not match ECG 
 so our features index pulse-rate variability rather than validated HRV. \textbf{Future work.} We plan (i) a consumer-device
 validation in which HRV exported from a commercial smartwatch, together with
 self-reported stress labels, is windowed identically and classified by the
-public-data-trained model; (ii) extension to multi-class affect; and (iii)
+public-data-trained model; (ii) external validation on an independent public dataset and
+extension to finer-grained affect; and (iii)
 lightweight per-user personalization to reduce the residual per-subject spread.
 
 \section*{Reproducibility}
 All results are regenerated by a single notebook. We report exact tool versions
 (Python 3.13, NumPy 2.4, pandas 2.2, scikit-learn 1.6, SciPy 1.16, NeuroKit2 0.2.10)
 and release a per-window manifest (with rejection reasons), the derived feature table,
-and per-subject held-out predictions for every reported model.
+per-subject held-out predictions for every reported model, and the three-class confusion
+and per-subject bootstrap outputs behind \cref{sec:specificity}.
 
 {\small
 \bibliographystyle{IEEEtran}
